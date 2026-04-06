@@ -484,15 +484,28 @@ function applyEdits(){
 // ---- OTWÓRZ NADAJESZ ----
 function openNadajesz(){
   var amount = D.payment === 'online' ? '' : (D.amount||'');
+  var isCard = D.payment === 'card';
 
-  // Wypełnij modal
+  // Zapisz dane do localStorage – odczyta je skrypt Tampermonkey na Nadajesz
+  var payload = {
+    phone:  D.phone || '',
+    street: D.street || '',
+    house:  D.house || '',
+    flat:   D.flat || '',
+    amount: amount,
+    card:   isCard
+  };
+  localStorage.setItem('gf_payload', JSON.stringify(payload));
+  localStorage.setItem('gf_ts', Date.now().toString());
+
+  // Wypełnij modal (backup gdyby Tampermonkey nie działał)
   document.getElementById('m-phone').textContent  = fmtPhone(D.phone);
   document.getElementById('m-street').textContent = D.street||'—';
   document.getElementById('m-house').textContent  = D.house||'—';
   document.getElementById('m-flat').textContent   = D.flat||'—';
   document.getElementById('m-amount').textContent = amount ? amount + ' zł' : '0 zł';
   document.getElementById('row-flat').style.display = D.flat ? 'flex' : 'none';
-  document.getElementById('remind-card').style.display   = D.payment==='card'   ? 'block' : 'none';
+  document.getElementById('remind-card').style.display   = isCard          ? 'block' : 'none';
   document.getElementById('remind-online').style.display = D.payment==='online' ? 'block' : 'none';
 
   // Otwórz Nadajesz
