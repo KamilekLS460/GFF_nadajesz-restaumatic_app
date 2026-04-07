@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GymFit -> Nadajesz Autofill
 // @namespace    https://gastro.nadajesz.pl
-// @version      4.0
+// @version      5.0
 // @match        https://gastro.nadajesz.pl/*
 // @match        https://www.gastro.nadajesz.pl/*
 // @grant        GM_setValue
@@ -9,7 +9,10 @@
 // @run-at       document-idle
 // ==/UserScript==
 (function() {
-  // Pobierz dane z URL lub z GM storage (po przekierowaniu logowania)
+  var LOGIN = 'gymfitfood2000@gmail.com';
+  var PASS  = 'gymfit123';
+
+  // Pobierz dane z URL
   var p=new URLSearchParams(window.location.search);
   var phone=p.get('phone')||'';
   var street=p.get('street')||'';
@@ -19,7 +22,7 @@
   var card=p.get('card')==='1';
   var notes=p.get('notes')||'';
 
-  // Jeśli są dane w URL - zapisz do GM storage na wypadek przekierowania
+  // Zapisz dane do GM storage jeśli są w URL
   if(phone||street){
     GM_setValue('gf_phone',phone);
     GM_setValue('gf_street',street);
@@ -30,9 +33,8 @@
     GM_setValue('gf_notes',notes);
     GM_setValue('gf_ts',Date.now().toString());
   } else {
-    // Brak danych w URL - sprawdź GM storage (po przekierowaniu)
     var ts=parseInt(GM_getValue('gf_ts','0'));
-    if(ts && Date.now()-ts < 10*60*1000) {
+    if(ts && Date.now()-ts < 10*60*1000){
       phone=GM_getValue('gf_phone','');
       street=GM_getValue('gf_street','');
       house=GM_getValue('gf_house','');
@@ -43,7 +45,36 @@
     }
   }
 
-  if(!phone&&!street)return;
+  // AUTO-LOGIN jeśli strona logowania
+  function tryLogin(){
+    var loginInput = document.querySelector('input[type="email"],input[name="email"],input[name="login"],input[type="text"]');
+    var passInput  = document.querySelector('input[type="password"]');
+    var submitBtn  = document.querySelector('button[type="submit"],input[type="submit"]');
+    if(loginInput && passInput && submitBtn){
+      loginInput.value = LOGIN;
+      loginInput.dispatchEvent(new Event('input',{bubbles:true}));
+      passInput.value = PASS;
+      passInput.dispatchEvent(new Event('input',{bubbles:true}));
+      setTimeout(function(){ submitBtn.click(); }, 500);
+      return true;
+    }
+    return false;
+  }
+
+  // Sprawdź czy jest strona logowania
+  var isLoginPage = window.location.href.includes('login') || 
+                    window.location.href.includes('signin') ||
+                    document.querySelector('input[type="password"]') !== null;
+
+  if(isLoginPage){
+    var lt=0, liv=setInterval(function(){
+      lt++;
+      if(tryLogin() || lt>=10) clearInterval(liv);
+    }, 500);
+    return;
+  }
+
+  if(!phone&&!street) return;
 
   function s(id,v){var e=document.getElementById(id);if(!e||!v)return;e.focus();e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));e.blur();}
 
@@ -59,7 +90,6 @@
       s('order_price_1',amount);
       s('uwagi_1',notes);
       if(card){var d=document.querySelector('.click_platnosc_karta'),i=document.getElementById('platnosc_karta_1');if(d&&i&&i.value!=='1')d.click();}
-      // Wyczyść storage po wypełnieniu
       GM_setValue('gf_ts','0');
       window.history.replaceState({},'','/');
       var b=document.createElement('div');
