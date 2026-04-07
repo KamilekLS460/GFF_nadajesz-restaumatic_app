@@ -371,7 +371,13 @@ function analyze(){
     '  "city": "miasto",\n' +
     '  "amount": "kwota łącznie jako liczba dziesiętna z kropką np. 109.50",\n' +
     '  "payment": "online albo card albo cash",\n' +
-    '  "notes": "dodatkowe uwagi do dostawy np. nazwa firmy pietro kod do klatki - pusty string jesli brak"\n' +
+    '  "notes": "uwagi klienta z sekcji Uwagi klienta np. nazwa firmy salon kod do klatki - pusty string jesli brak"\n' +
+    '}\n\n' +
+    'WAZNE zasady dla aplikacji mobilnej Restaumatic:\n' +
+    '- Adres moze zawierac "lokal Lok.X" lub "lokal X" - to jest numer lokalu, wpisz go do flat\n' +
+    '- Uwagi klienta sa w sekcji "Uwagi klienta" po prawej stronie ekranu\n' +
+    '- Numer telefonu jest pod imieniem klienta w formacie 505 944 479\n' +
+    '- Platnosc Online = online, Karta przy odbiorze = card, Gotowka = cash\n' +
     '}\n\n' +
     'Zasady dla pola payment:\n' +
     '- "online" gdy płatność przez internet, BLIK, karta online, przelew (Restaumatic pobiera pieniądze)\n' +
