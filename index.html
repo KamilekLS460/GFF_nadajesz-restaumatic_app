@@ -345,7 +345,14 @@ function resetImg(){
 }
 
 function newOrder(){
+  D = {};
+  imgB64 = '';
+  imgMime = 'image/jpeg';
   resetImg();
+  document.getElementById('analyze-btn').style.display = 'block';
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('modal').classList.remove('open');
   show('s-start');
 }
 
