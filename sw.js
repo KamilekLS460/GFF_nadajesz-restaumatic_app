@@ -1,7 +1,11 @@
-self.addEventListener('install', function(e) { self.skipWaiting(); });
-self.addEventListener('activate', function(e) { e.waitUntil(clients.claim()); });
-self.addEventListener('fetch', function(e) {
-  e.respondWith(fetch(e.request).catch(function() {
-    return caches.match(e.request);
-  }));
+const CACHE_NAME = 'gymfit-v2';
+self.addEventListener('install', e => { self.skipWaiting(); });
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+  );
+  e.waitUntil(clients.claim());
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
