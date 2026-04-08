@@ -442,6 +442,13 @@ function analyzeImage(base64) {
     document.getElementById('preview-section').style.display = 'block';
     renderActions(orderData);
     document.getElementById('action-area').style.display = 'block';
+    // Shrink preview image
+    document.getElementById('preview-img').style.maxHeight = '120px';
+    document.getElementById('preview-img').style.objectFit = 'cover';
+    // Scroll to action buttons
+    setTimeout(function(){
+      document.getElementById('action-area').scrollIntoView({behavior:'smooth', block:'start'});
+    }, 300);
   })
   .catch(function(err) {
     showResult('<div class="alert alert-err">Błąd: ' + esc(err.message) + '</div>');
