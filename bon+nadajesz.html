@@ -528,6 +528,7 @@ async function doDelivery() {
     street: del.street || '',
     house:  del.house  || '',
     flat:   del.flat   || '',
+    city:   del.city   || '',
     amount: amount,
     card:   isCard ? '1' : '0',
     notes:  del.notes  || ''
@@ -650,21 +651,22 @@ async function printBon() {
   var bytes = [].concat(CMD.init);
 
   lines.forEach(function(l) {
+    var t = l.t ? plToAscii(l.t) : '';
     switch(l.m) {
       case 'thick':
         bytes = bytes.concat(Array.from(enc.encode('================================\n'))); break;
       case 'center':
-        bytes = bytes.concat(CMD.center, CMD.bold_on, Array.from(enc.encode(l.t+'\n')), CMD.bold_off, CMD.left); break;
+        bytes = bytes.concat(CMD.center, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.left); break;
       case 'center_bold':
-        bytes = bytes.concat(CMD.big_h, CMD.bold_on, CMD.center, Array.from(enc.encode(l.t+'\n')), CMD.bold_off, CMD.normal, CMD.left); break;
+        bytes = bytes.concat(CMD.big_h, CMD.bold_on, CMD.center, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal, CMD.left); break;
       case 'big':
-        bytes = bytes.concat(CMD.duble, CMD.bold_on, Array.from(enc.encode(l.t+'\n')), CMD.bold_off, CMD.normal); break;
+        bytes = bytes.concat(CMD.duble, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal); break;
       case 'med':
-        bytes = bytes.concat(CMD.med, CMD.bold_on, Array.from(enc.encode(l.t+'\n')), CMD.bold_off, CMD.normal); break;
+        bytes = bytes.concat(CMD.med, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal); break;
       case 'bold':
-        bytes = bytes.concat(CMD.big_h, CMD.bold_on, Array.from(enc.encode(l.t+'\n')), CMD.bold_off, CMD.normal); break;
+        bytes = bytes.concat(CMD.big_h, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal); break;
       case 'normal':
-        bytes = bytes.concat(Array.from(enc.encode(l.t+'\n'))); break;
+        bytes = bytes.concat(Array.from(enc.encode(t+'\n'))); break;
       case 'gap':
         bytes = bytes.concat(Array.from(enc.encode('\n'))); break;
       case 'feed':
@@ -688,6 +690,19 @@ async function printBon() {
 }
 
 // ─── HELPERS ─────────────────────────────────────────────
+function plToAscii(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/ą/g,'a').replace(/Ą/g,'A')
+    .replace(/ć/g,'c').replace(/Ć/g,'C')
+    .replace(/ę/g,'e').replace(/Ę/g,'E')
+    .replace(/ł/g,'l').replace(/Ł/g,'L')
+    .replace(/ń/g,'n').replace(/Ń/g,'N')
+    .replace(/ó/g,'o').replace(/Ó/g,'O')
+    .replace(/ś/g,'s').replace(/Ś/g,'S')
+    .replace(/ź/g,'z').replace(/Ź/g,'Z')
+    .replace(/ż/g,'z').replace(/Ż/g,'Z');
+}
 function showResult(h) { document.getElementById('result-list').innerHTML = h; }
 function showActionMsg(h) { var el = document.getElementById('action-msg'); if(el) el.innerHTML = h; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
