@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GymFit -> Nadajesz Autofill
 // @namespace    https://gastro.nadajesz.pl
-// @version      5.0
+// @version      6.0
 // @match        https://gastro.nadajesz.pl/*
 // @match        https://www.gastro.nadajesz.pl/*
 // @grant        GM_setValue
@@ -21,6 +21,7 @@
   var amount=p.get('amount')||'';
   var card=p.get('card')==='1';
   var notes=p.get('notes')||'';
+  var city=p.get('city')||'';
 
   // Zapisz dane do GM storage jeśli są w URL
   if(phone||street){
@@ -31,6 +32,7 @@
     GM_setValue('gf_amount',amount);
     GM_setValue('gf_card',card?'1':'0');
     GM_setValue('gf_notes',notes);
+    GM_setValue('gf_city',city);
     GM_setValue('gf_ts',Date.now().toString());
   } else {
     var ts=parseInt(GM_getValue('gf_ts','0'));
@@ -42,10 +44,11 @@
       amount=GM_getValue('gf_amount','');
       card=GM_getValue('gf_card','0')==='1';
       notes=GM_getValue('gf_notes','');
+      city=GM_getValue('gf_city','');
     }
   }
 
-  // AUTO-LOGIN jeśli strona logowania
+  // AUTO-LOGIN
   function tryLogin(){
     var loginInput = document.querySelector('input[type="email"],input[name="email"],input[name="login"],input[type="text"]');
     var passInput  = document.querySelector('input[type="password"]');
@@ -61,8 +64,7 @@
     return false;
   }
 
-  // Sprawdź czy jest strona logowania
-  var isLoginPage = window.location.href.includes('login') || 
+  var isLoginPage = window.location.href.includes('login') ||
                     window.location.href.includes('signin') ||
                     document.querySelector('input[type="password"]') !== null;
 
@@ -76,28 +78,80 @@
 
   if(!phone&&!street) return;
 
-  function s(id,v){var e=document.getElementById(id);if(!e||!v)return;e.focus();e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));e.blur();}
+  // Wypełnij pole tekstowe
+  function s(id,v){
+    var e=document.getElementById(id);
+    if(!e||!v) return;
+    e.focus();
+    e.value=v;
+    e.dispatchEvent(new Event('input',{bubbles:true}));
+    e.dispatchEvent(new Event('change',{bubbles:true}));
+    e.blur();
+  }
 
-  var t=0,iv=setInterval(function(){
+  // Wybierz miejscowość z listy dropdown
+  function selectCity(cityName) {
+    if (!cityName) return;
+    // Szukaj selecta z miastami
+    var selects = document.querySelectorAll('select');
+    for (var i=0; i<selects.length; i++) {
+      var sel = selects[i];
+      var opts = sel.options;
+      // Sprawdź czy to select z miastami (ma Białystok)
+      var hasBialystok = false;
+      for (var j=0; j<opts.length; j++) {
+        if (opts[j].text.indexOf('Białystok') !== -1 || opts[j].text.indexOf('Bialystok') !== -1) {
+          hasBialystok = true; break;
+        }
+      }
+      if (!hasBialystok) continue;
+
+      // Szukaj pasującej opcji (dopasowanie częściowe, case-insensitive)
+      var cityLower = cityName.toLowerCase().trim();
+      var bestMatch = -1;
+      for (var k=0; k<opts.length; k++) {
+        var optText = opts[k].text.toLowerCase().trim();
+        if (optText === cityLower) { bestMatch = k; break; } // dokładne dopasowanie
+        if (optText.indexOf(cityLower) !== -1 && bestMatch === -1) bestMatch = k; // częściowe
+      }
+      if (bestMatch !== -1) {
+        sel.selectedIndex = bestMatch;
+        sel.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+    }
+  }
+
+  var t=0, iv=setInterval(function(){
     t++;
-    if(document.getElementById('order_phone_1')||t>=30){
+    if(document.getElementById('order_phone_1') || t>=30){
       clearInterval(iv);
-      if(!document.getElementById('order_phone_1'))return;
-      s('order_phone_1',phone);
-      s('order_street_1',street);
-      s('order_nr_1',house);
-      s('order_nr_lok_1',flat);
-      s('order_price_1',amount);
-      s('uwagi_1',notes);
-      if(card){var d=document.querySelector('.click_platnosc_karta'),i=document.getElementById('platnosc_karta_1');if(d&&i&&i.value!=='1')d.click();}
+      if(!document.getElementById('order_phone_1')) return;
+
+      s('order_phone_1', phone);
+      s('order_street_1', street);
+      s('order_nr_1', house);
+      s('order_nr_lok_1', flat);
+      s('order_price_1', amount);
+      s('uwagi_1', notes);
+
+      // Wybierz miejscowość z listy
+      if (city) selectCity(city);
+
+      if(card){
+        var d=document.querySelector('.click_platnosc_karta');
+        var i=document.getElementById('platnosc_karta_1');
+        if(d&&i&&i.value!=='1') d.click();
+      }
+
       GM_setValue('gf_ts','0');
       window.history.replaceState({},'','/');
+
       var b=document.createElement('div');
       b.style.cssText='position:fixed;top:0;left:0;right:0;background:#27ae60;color:white;padding:14px;font-size:16px;font-weight:bold;text-align:center;z-index:99999;cursor:pointer';
-      b.textContent='Wypelniono! '+phone+' - '+street+' '+house+(flat?'/'+flat:'')+' - '+(card?'KARTA':(amount?amount+' zl':'ONLINE'))+(notes?' - '+notes:'');
+      b.textContent='Wypelniono! '+phone+' - '+street+' '+house+(flat?'/'+flat:'')+' '+city+' - '+(card?'KARTA':(amount?amount+' zl':'ONLINE'))+(notes?' - '+notes:'');
       b.onclick=function(){b.remove();};
       document.body.appendChild(b);
       setTimeout(function(){if(b.parentNode)b.remove();},8000);
     }
-  },300);
+  }, 300);
 })();
