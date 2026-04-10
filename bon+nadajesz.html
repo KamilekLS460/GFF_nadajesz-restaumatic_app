@@ -501,11 +501,18 @@ function renderActions(d) {
   var html = '<div id="action-msg" style="margin-bottom:8px;"></div>';
 
   if (d.typ === 'DOSTAWA') {
+    // Wszystkie trzy przyciski przy dostawie
     html += '<button class="btn-action btn-green" onclick="doDelivery()">';
-    html += '<div class="btn-action-inner">📦 Otwórz Nadajesz + Drukuj bon<small>Wypełni formularz i wydrukuje bon kuchenny</small></div>';
+    html += '<div class="btn-action-inner">📦 Nadajesz + Bon<small>Wypełni formularz i wydrukuje bon</small></div>';
     html += '</button>';
-    html += '<button class="btn-action btn-green" style="background:var(--green-dark);font-size:14px;padding:12px;" onclick="printOnly()">🖨 Tylko drukuj bon</button>';
+    html += '<button class="btn-action btn-blue" onclick="nadajeszyOnly()">';
+    html += '<div class="btn-action-inner">📦 Tylko Nadajesz<small>Tylko wypełni formularz kuriera</small></div>';
+    html += '</button>';
+    html += '<button class="btn-action btn-green" style="background:var(--green-dark);" onclick="printOnly()">';
+    html += '<div class="btn-action-inner">🖨 Tylko Bon<small>Tylko drukuje bon kuchenny</small></div>';
+    html += '</button>';
   } else {
+    // Odbiór — tylko bon
     html += '<button class="btn-action btn-green" onclick="printOnly()">';
     html += '<div class="btn-action-inner">🖨 Drukuj bon kuchenny<small>Odbiór osobisty — bez Nadajesz</small></div>';
     html += '</button>';
@@ -537,6 +544,26 @@ async function doDelivery() {
 
   // Drukuj bon
   await printBon();
+}
+
+// ─── TYLKO NADAJESZ ──────────────────────────────────────
+function nadajeszyOnly() {
+  var del = orderData.delivery;
+  if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy na tym screenshocie!</div>'); return; }
+  var amount = del.payment === 'online' ? '' : (del.amount||'');
+  var isCard = del.payment === 'card';
+  var params = new URLSearchParams({
+    phone:  del.phone  || '',
+    street: del.street || '',
+    house:  del.house  || '',
+    flat:   del.flat   || '',
+    city:   del.city   || '',
+    amount: amount,
+    card:   isCard ? '1' : '0',
+    notes:  del.notes  || ''
+  });
+  window.open('https://gastro.nadajesz.pl/?' + params.toString(), '_blank');
+  showActionMsg('<div class="alert alert-ok">Nadajesz otwarty — dane wypełniają się automatycznie.</div>');
 }
 
 // ─── TYLKO BON ────────────────────────────────────────────
