@@ -926,6 +926,8 @@ function nadajesyFromHistory(id) {
 }
 
 function deleteFromHistory(id) {
+  var pin = prompt('Podaj PIN:');
+  if (pin !== '2222') { alert('Nieprawidłowy PIN.'); return; }
   var history = loadHistory().filter(function(h){ return h.id !== id; });
   // Przelicz duplikaty po usunięciu
   var numCount = {};
