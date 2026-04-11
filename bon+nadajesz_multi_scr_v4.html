@@ -685,7 +685,7 @@ function buildBonLines(d) {
 
   // imię i nazwisko klienta
   if (d.delivery && d.delivery.name) {
-    lines.push({m:'big', t: d.delivery.name});
+    lines.push({m:'big', t: d.delivery.name.toUpperCase()});
   }
 
   lines.push({m:'thick'});
