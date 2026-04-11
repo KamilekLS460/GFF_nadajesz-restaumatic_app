@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1D9E75">
+<title>GymFit Food</title>
+<style>
+:root {
+  --green: #1D9E75; --green-dark: #0F6E56; --green-light: #E1F5EE;
+  --red: #c0392b; --red-dark: #922b21; --red-light: #FAECE7;
+  --blue-light: #E6F1FB; --blue-dark: #185FA5;
+  --amber-light: #FAEEDA; --amber-dark: #854F0B;
+  --bg: #F2F1ED; --surface: #FFFFFF;
+  --border: rgba(0,0,0,0.09); --border-strong: rgba(0,0,0,0.16);
+  --text: #1a1a18; --text-muted: #6b6b66; --text-faint: #9e9e98;
+  --radius: 16px; --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* SCREENS */
+.screen { display: none; padding: 14px; max-width: 560px; margin: 0 auto; padding-bottom: 40px; }
+.screen.active { display: block; }
+
+/* TOPBAR */
+.topbar { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 14px 16px; position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; }
+.topbar-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--green); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.topbar-icon svg { width: 20px; height: 20px; fill: white; }
+.topbar-title h1 { font-size: 16px; font-weight: 600; }
+.topbar-title p { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+/* CARDS */
+.card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 14px 16px; margin-bottom: 12px; }
+.card-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--text-faint); text-transform: uppercase; margin-bottom: 11px; }
+
+/* API KEY */
+.api-row { display: flex; gap: 8px; align-items: center; }
+.api-input { flex: 1; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 10px 13px; font-size: 13px; font-family: monospace; color: var(--text); background: var(--bg); outline: none; }
+.api-input:focus { border-color: var(--green); }
+.api-input::placeholder { color: var(--text-faint); font-family: -apple-system, sans-serif; }
+.btn-icon { width: 38px; height: 38px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+
+/* BLUETOOTH */
+.bt-row { display: flex; gap: 8px; align-items: center; }
+.bt-badge { flex: 1; padding: 9px 13px; border-radius: var(--radius-sm); font-size: 13px; background: var(--bg); color: var(--text-muted); border: 0.5px solid var(--border); }
+.bt-badge.connected { background: var(--green-light); color: var(--green-dark); border-color: var(--green); }
+.bt-badge.error { background: var(--red-light); color: var(--red); }
+
+/* BUTTONS */
+.btn-sm { padding: 9px 15px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong); background: var(--surface); font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; white-space: nowrap; }
+.btn-sm:active { transform: scale(0.97); }
+.btn-sm.danger { border-color: #D85A30; color: var(--red); }
+
+/* UPLOAD */
+.upload-label { display: block; border: 1.5px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 26px 20px; text-align: center; cursor: pointer; }
+.upload-label:active { background: var(--bg); }
+.upload-label input { display: none; }
+.upload-icon { font-size: 34px; margin-bottom: 8px; }
+.upload-label p { font-size: 15px; color: var(--text-muted); font-weight: 500; }
+.upload-label small { font-size: 12px; color: var(--text-faint); margin-top: 3px; display: block; }
+#preview-img { width: 100%; border-radius: var(--radius-sm); border: 0.5px solid var(--border); margin-bottom: 10px; display: none; }
+
+/* ANALYZING */
+.analyzing-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; color: var(--text-muted); font-size: 14px; }
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border-strong); border-top-color: var(--green); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ORDER META */
+.order-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.meta-badge { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 20px; }
+.meta-nr { background: var(--bg); color: var(--text-muted); }
+.meta-dostawa { background: var(--blue-light); color: var(--blue-dark); }
+.meta-odbior { background: var(--green-light); color: var(--green-dark); }
+
+/* DELIVERY INFO */
+.delivery-box { background: var(--blue-light); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; }
+.delivery-box .dl { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--blue-dark); text-transform: uppercase; margin-bottom: 6px; }
+.delivery-field { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.delivery-field:last-child { margin-bottom: 0; }
+.df-label { font-size: 11px; color: var(--blue-dark); opacity: 0.7; width: 70px; flex-shrink: 0; }
+.df-value { font-size: 14px; font-weight: 600; color: var(--blue-dark); }
+
+/* BON ITEMS */
+.item-block { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.item-block:last-child { border-bottom: none; padding-bottom: 0; }
+.item-main { display: flex; align-items: flex-start; gap: 9px; }
+.item-qty { background: var(--bg); border-radius: 6px; padding: 3px 9px; font-weight: 700; font-size: 13px; color: var(--text-muted); flex-shrink: 0; min-width: 34px; text-align: center; }
+.item-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.item-arrow { color: var(--green-dark); font-weight: 700; margin: 0 3px; }
+.item-sosy { font-size: 13px; color: var(--text-muted); }
+.item-badge { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; flex-shrink: 0; }
+.badge-danie { background: var(--green-light); color: var(--green-dark); }
+.badge-extra { background: var(--bg); color: var(--text-muted); }
+
+/* UWAGI */
+.uwagi-box { background: #FFF8E6; border: 1.5px solid #EF9F27; border-radius: var(--radius-sm); padding: 11px 13px; margin-top: 10px; }
+.uwagi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #854F0B; text-transform: uppercase; margin-bottom: 4px; }
+.uwagi-box p { font-size: 14px; color: #412402; font-weight: 600; line-height: 1.4; }
+
+/* BON PREVIEW */
+.bon-preview { font-family: 'Courier New', monospace; background: #f9f8f4; border: 1px solid #ddd; border-radius: var(--radius-sm); padding: 14px; color: #111; overflow-x: auto; }
+.bon-line { display: block; white-space: pre; }
+.bon-thick { font-size: 12px; line-height: 1.8; }
+.bon-normal { font-size: 12px; line-height: 1.8; }
+.bon-center { font-size: 13px; font-weight: 700; line-height: 2; text-align: center; }
+.bon-center-bold { font-size: 15px; font-weight: 900; line-height: 2.2; text-align: center; }
+.bon-med { font-size: 15px; font-weight: 700; line-height: 1.7; }
+.bon-big { font-size: 20px; font-weight: 900; line-height: 1.5; }
+.bon-bold { font-size: 15px; font-weight: 700; line-height: 1.6; }
+.bon-gap { display: block; height: 10px; }
+.bon-feed { display: block; height: 30px; }
+
+/* HISTORIA */
+.history-day { margin-bottom: 16px; }
+.history-day-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-faint); text-transform: uppercase; margin-bottom: 8px; padding: 0 2px; }
+.history-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.history-item.duplicate { border-color: #D85A30; background: var(--red-light); }
+.history-item-info { flex: 1; min-width: 0; }
+.history-item-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.history-nr { font-size: 13px; font-weight: 700; color: var(--text); }
+.history-time { font-size: 12px; color: var(--text-faint); }
+.history-dup-badge { font-size: 10px; font-weight: 700; background: #D85A30; color: white; padding: 2px 6px; border-radius: 4px; }
+.history-name { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-typ { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+.history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.history-btn { width: 34px; height: 34px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong); background: var(--surface); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.history-btn.del { border-color: #D85A30; }
+.history-empty { text-align: center; padding: 32px 20px; color: var(--text-faint); font-size: 14px; }
+
+/* ACTION BUTTONS */
+.action-area { margin-top: 4px; }
+.btn-action { width: 100%; padding: 16px; border-radius: var(--radius); border: none; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-action:active { transform: scale(0.99); }
+.btn-action small { display: block; font-size: 12px; font-weight: 400; opacity: 0.85; margin-top: 3px; }
+.btn-action-inner { text-align: center; }
+.btn-green { background: var(--green); color: white; }
+.btn-green:disabled { background: #ccc; color: #888; cursor: not-allowed; transform: none; }
+.btn-blue { background: var(--blue-dark); color: white; }
+.btn-red-soft { background: var(--red-light); color: var(--red); border: 0.5px solid var(--red); font-size: 14px; padding: 12px; }
+
+/* ALERTS */
+.alert { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; margin-bottom: 12px; line-height: 1.5; }
+.alert-ok { background: var(--green-light); color: var(--green-dark); }
+.alert-err { background: var(--red-light); color: var(--red); }
+
+/* HINT */
+.hint { font-size: 11px; color: var(--text-faint); margin-top: 8px; line-height: 1.5; }
+.hint a { color: var(--green); text-decoration: none; }
+
+/* API SAVED */
+.api-saved { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.api-saved span { font-size: 13px; color: var(--green-dark); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-icon">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+  </div>
+  <div class="topbar-title">
+    <h1>GymFit Food</h1>
+    <p>Restaumatica → Nadajesz + Bon</p>
+  </div>
+  <button onclick="showHistory()" style="margin-left:auto;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);font-weight:600;padding:4px 8px;border-radius:8px;">🕐 Historia</button>
+</div>
+
+<!-- SCREEN: HISTORIA -->
+<div id="s-history" class="screen">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <button class="btn-sm" onclick="showMain()">← Wróć</button>
+    <h2 style="font-size:16px;font-weight:600;flex:1;">Historia zamówień</h2>
+    <button class="btn-sm danger" onclick="clearHistory()">Wyczyść</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<!-- SCREEN: START -->
+<div id="s-start" class="screen active">
+
+  <!-- API KEY -->
+  <div class="card">
+    <div class="card-label">Klucz API Anthropic</div>
+    <div id="api-form">
+      <div class="api-row">
+        <input type="password" id="api-key" class="api-input" placeholder="sk-ant-api03-..." autocomplete="off" />
+        <button class="btn-icon" onclick="toggleKey()">👁</button>
+      </div>
+      <button class="btn-sm" style="width:100%;margin-top:8px;" onclick="saveKey()">Zapisz klucz API</button>
+      <p id="key-status" style="font-size:12px;margin-top:6px;font-weight:500;"></p>
+      <p class="hint">Pobierz: <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> · ~0,003 zł za zamówienie</p>
+    </div>
+    <div id="api-saved" style="display:none;" class="api-saved">
+      <span>✓ Klucz API zapisany</span>
+      <button class="btn-sm" onclick="changeKey()">Zmień</button>
+    </div>
+  </div>
+
+  <!-- BLUETOOTH -->
+  <div class="card">
+    <div class="card-label">Drukarka Bluetooth (NETUM ZJ-5809)</div>
+    <div class="bt-row">
+      <div class="bt-badge" id="bt-status">Niepodłączona</div>
+      <button class="btn-sm" id="bt-btn" onclick="connectBluetooth()">Połącz</button>
+    </div>
+    <p class="hint">Włącz drukarkę, poczekaj na niebieską diodę, naciśnij Połącz.</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="card">
+    <div class="card-label">Screenshoty z Restaumatica</div>
+    <div id="previews-container" style="display:none;margin-bottom:10px;"></div>
+    <label class="upload-label" id="upload-label">
+      <input type="file" id="file-input" accept="image/*" multiple onchange="handleFile(this)" />
+      <div class="upload-icon">📋</div>
+      <p id="upload-text">Wybierz screenshoty</p>
+      <small id="upload-subtext">Możesz zaznaczyć kilka naraz</small>
+    </label>
+    <div id="upload-actions" style="display:none;margin-top:10px;">
+      <label class="upload-label" style="padding:14px 20px;margin-bottom:8px;" id="add-more-label">
+        <input type="file" id="file-input-more" accept="image/*" onchange="handleFileMore(this)" />
+        <span style="font-size:20px;">➕</span>
+        <span style="font-size:14px;color:var(--text-muted);font-weight:500;margin-left:8px;">Dodaj kolejny screen</span>
+      </label>
+      <button class="btn-action btn-green" onclick="analyzeImages()" style="margin-bottom:0;">
+        <div class="btn-action-inner">🔍 Analizuj zamówienie</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- WYNIKI -->
+  <div class="card" id="result-section" style="display:none">
+    <div class="card-label">Rozpoznane zamówienie</div>
+    <div id="result-list"></div>
+  </div>
+
+  <!-- PODGLĄD BONU -->
+  <div class="card" id="preview-section" style="display:none">
+    <div class="card-label">Podgląd bonu</div>
+    <div class="bon-preview" id="bon-preview"></div>
+  </div>
+
+  <!-- AKCJE -->
+  <div class="action-area" id="action-area" style="display:none">
+    <div id="action-msg" style="margin-bottom:8px;"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── DANE ────────────────────────────────────────────────
+var orderData = null;
+var images = []; // tablica base64 screenshotów
+var btChar = null, btDevice = null;
+
+// ─── MENU PROMPT ─────────────────────────────────────────
+var MENU_PROMPT = `Masz jeden lub więcej screenshotów tego samego zamówienia z Restaumatica dla GymFit Food. Screenshoty mogą być w dowolnej kolejności — sam ustal który zawiera dane dostawy a który dania.
+
+Wyciągnij WSZYSTKIE dane zamówienia — dane klienta/dostawy ORAZ pozycje do kuchni.
+
+MAPA NAZW KUCHENNYCH:
+"Bułka"/"Mały Bombowiec" → BUŁKA
+"Tortilla M"/"Fit Rulon M" → TORTILLA M
+"Tortilla L"/"Fit Rulon L" → TORTILLA L
+"Na talerzu"/"Białkowy Granat" → TALERZ
+"Chudy Kozak Standard" → B.INDYK
+"Chudy Kozak Podwójny" → B.INDYK PODW
+"Byczy Sztos Standard" → B.WOŁOWY
+"Byczy Sztos Podwójny" → B.WOŁOWY PODW
+"Krótka Kłoda Klasyczna" → ZAP.KRÓTKA
+"Krótka Kłoda Wypasiona" → ZAP.KRÓTKA+MIĘSO
+"Długa Smuga Klasyczna" → ZAP.DŁUGA
+"Długa Smuga Wypasiona" → ZAP.DŁUGA+MIĘSO
+"Sprężynkowa Moc" → DZIEC.FINGERSY
+"Wesoły Brzuszek" → DZIEC.STRIPSY
+"Sałatka O Kurczę Talarki" → SAŁATKA
+
+DODATKI ZIEMNIACZANE (dopisz do nazwy dania gdy wybrane przy TALERZ, DZIEC.*):
+"Frytki"/"Frytki z farmy"/"Frytki zakręcone (sprężynki)" przy TALERZ → +FRYTKI / +SPRĘŻYNKI itd
+"Ziemniaczki opiekane" → +ZIEMNIACZKI
+"Sprężynki" jako dodatek → +SPRĘŻYNKI
+"Talarki" jako dodatek → +TALARKI
+
+OSOBNO ZAMÓWIONE:
+"Ziemniaczki opiekane" → ZIEMNIACZKI
+"Frytki z farmy" → FRYTKI
+"Sprężynki" osobno → SPRĘŻYNKI
+"Talarki" osobno → TALARKI
+
+SOSY (tablica "sosy" przy daniu):
+"Sos koperkowo-ziołowy"/koperek → KOPEREK
+"Sos burgerowy" → BURGEROWY
+"Sos czosnkowy" → CZOSNEK
+"Sos ostry" → OSTRY
+"ketchup" → KETCHUP
+"majonez" → MAJONEZ
+"Sos vinegret" → VINEGRET
+
+POMIJAJ: "opakowanie dowóz", "opakowanie wynos", "Dostawa" jako pozycja cenowa.
+
+ZASADY POZYCJI:
+- Każda linia na screenshocie = osobna pozycja w JSON
+- NIGDY nie scalaj dwóch osobnych linii w jedną, nawet jeśli mają tę samą nazwę dania
+- Dwie linie "Sprężynki" z różnymi sosami = dwie osobne pozycje w JSON
+- qty = wartość z pola "X szt." przy danej linii — nie sumuj
+- Sosy i dodatki widoczne POD daną pozycją należą tylko do tej pozycji, nie do następnej
+- Przy wielu screenshotach: zbierz WSZYSTKIE pozycje ze WSZYSTKICH screenshotów — nie pomijaj żadnej
+- Nieznane pozycje → oryginalna nazwa, type:"extra"
+
+DANE DOSTAWY (tylko przy DOSTAWIE):
+- name: imię i nazwisko klienta
+- phone: numer telefonu tylko cyfry bez +48
+- street: nazwa ulicy bez numeru, bez "ul." — bierz WYŁĄCZNIE z pola "Adres", IGNORUJ pole "Strefa" (zawiera info o strefie dostawy, nie adres klienta)
+- house: numer domu np. "3" albo "15B" — bierz z pola "Adres"
+- flat: numer lokalu/mieszkania, "" jeśli brak — bierz z pola "Adres"
+- city: miasto — bierz z pola "Adres", IGNORUJ nazwy stref jak "Jaroszówka", "strefa 3km" itp.
+- amount: kwota łącznie jako liczba z kropką np. "83.00"
+- payment: "online" / "card" / "cash"
+- notes: TYLKO info dla kuriera (piętro, wejście, kod do klatki) — NIE przepisuj uwag o jedzeniu
+
+Odpowiedz WYŁĄCZNIE JSON (zero tekstu, zero backtick-ów):
+{
+  "numer": "2",
+  "typ": "DOSTAWA",
+  "godz_zam": "15:24",
+  "termin": "JAK NAJSZYBCIEJ",
+  "adres": ["Białystok", "Bohaterów Monte Cassino 3/80", "lokal 80, piętro 5"],
+  "uwagi": "Proszę bez sosu do talerza",
+  "pozycje": [
+    {"qty": 1, "name": "TALERZ +FRYTKI", "sosy": ["KETCHUP"], "type": "danie"},
+    {"qty": 1, "name": "BUŁKA", "sosy": ["CZOSNEK"], "type": "danie"}
+  ],
+  "delivery": {
+    "name": "Jan Kowalski",
+    "phone": "730882037",
+    "street": "Bohaterów Monte Cassino",
+    "house": "3",
+    "flat": "80",
+    "city": "Białystok",
+    "amount": "83.00",
+    "payment": "online",
+    "notes": "piętro 5"
+  }
+}
+typ = "DOSTAWA" lub "ODBIÓR"
+Przy ODBIORZE: delivery = null, adres = []`;
+
+// ─── API KEY ──────────────────────────────────────────────
+var keyInput = document.getElementById('api-key');
+var savedKey = localStorage.getItem('gf_api_key');
+if (savedKey) keyInput.value = savedKey;
+if (keyInput.value) showApiSaved();
+
+function toggleKey() { keyInput.type = keyInput.type === 'password' ? 'text' : 'password'; }
+
+function saveKey() {
+  var val = keyInput.value.trim();
+  var st = document.getElementById('key-status');
+  if (val.startsWith('sk-') && val.length > 20) {
+    localStorage.setItem('gf_api_key', val);
+    showApiSaved();
+  } else {
+    st.textContent = '✗ Nieprawidłowy klucz — powinien zaczynać się od sk-ant-...';
+    st.style.color = 'var(--red)';
+  }
+}
+
+function showApiSaved() {
+  document.getElementById('api-form').style.display = 'none';
+  document.getElementById('api-saved').style.display = 'flex';
+}
+
+function changeKey() {
+  document.getElementById('api-form').style.display = 'block';
+  document.getElementById('api-saved').style.display = 'none';
+  keyInput.value = '';
+  localStorage.removeItem('gf_api_key');
+  document.getElementById('key-status').textContent = '';
+}
+
+// ─── BLUETOOTH ────────────────────────────────────────────
+async function connectBluetooth() {
+  if (!navigator.bluetooth) { setBt('Web Bluetooth niedostępny', 'error'); return; }
+  setBt('Szukam drukarki…', '');
+  try {
+    btDevice = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [
+        '000018f0-0000-1000-8000-00805f9b34fb',
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+      ]
+    });
+    setBt('Łączę…', '');
+    var server = await btDevice.gatt.connect();
+    var pairs = [
+      {s:'000018f0-0000-1000-8000-00805f9b34fb', c:'00002af1-0000-1000-8000-00805f9b34fb'},
+      {s:'49535343-fe7d-4ae5-8fa9-9fafd205e455', c:'49535343-8841-43f4-a8d4-ecbe34729bb3'}
+    ];
+    var char = null;
+    for (var i=0; i<pairs.length; i++) {
+      try { var svc = await server.getPrimaryService(pairs[i].s); char = await svc.getCharacteristic(pairs[i].c); break; } catch(e){}
+    }
+    if (!char) throw new Error('Nieznany serwis BLE drukarki.');
+    btChar = char;
+    setBt('✓ ' + btDevice.name, 'connected');
+    var btn = document.getElementById('bt-btn');
+    btn.textContent = 'Rozłącz'; btn.classList.add('danger'); btn.onclick = disconnectBT;
+  } catch(err) {
+    if (err.name === 'NotFoundError') setBt('Anulowano.', '');
+    else setBt('Błąd: ' + err.message, 'error');
+  }
+}
+
+function disconnectBT() {
+  if (btDevice && btDevice.gatt.connected) btDevice.gatt.disconnect();
+  btChar = null; btDevice = null;
+  setBt('Niepodłączona', '');
+  var btn = document.getElementById('bt-btn');
+  btn.textContent = 'Połącz'; btn.classList.remove('danger'); btn.onclick = connectBluetooth;
+}
+
+function setBt(msg, cls) {
+  var el = document.getElementById('bt-status');
+  el.textContent = msg; el.className = 'bt-badge' + (cls ? ' '+cls : '');
+}
+
+// ─── FILE ─────────────────────────────────────────────────
+function handleFile(input) {
+  var files = Array.from(input.files);
+  if (!files.length) return;
+  images = [];
+  var dataUrls = [];
+  var loaded = 0;
+  files.forEach(function(file, idx) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      dataUrls[idx] = e.target.result;
+      images[idx] = e.target.result.split(',')[1];
+      loaded++;
+      if (loaded === files.length) {
+        renderPreviews(dataUrls);
+        var count = files.length;
+        document.getElementById('upload-label').querySelector('p').textContent = count === 1 ? 'Zmień screen' : 'Zmień screenshoty';
+        document.getElementById('upload-label').querySelector('small').textContent = count === 1 ? 'Zastąpi screen' : 'Wgrano ' + count + ' screenshoty — zastąpi wszystkie';
+        document.getElementById('upload-actions').style.display = 'block';
+        document.getElementById('result-section').style.display = 'none';
+        document.getElementById('preview-section').style.display = 'none';
+        document.getElementById('action-area').style.display = 'none';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function handleFileMore(input) {
+  var file = input.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl = e.target.result;
+    images.push(dataUrl.split(',')[1]);
+    // Odśwież podglądy
+    var allDataUrls = [];
+    // Musimy przebudować z images — trzymamy też dataUrls
+    document.getElementById('file-input-more').value = '';
+    renderPreviewAdd(dataUrl, images.length);
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderPreviews(dataUrls) {
+  var container = document.getElementById('previews-container');
+  container.style.display = 'flex';
+  container.style.gap = '8px';
+  container.style.flexWrap = 'wrap';
+  container.innerHTML = dataUrls.map(function(url, i) {
+    return '<div style="position:relative;flex:1;min-width:80px;">' +
+      '<img src="' + url + '" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:0.5px solid var(--border);">' +
+      '<span style="position:absolute;top:4px;left:4px;background:var(--green);color:white;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">Screen ' + (i+1) + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function renderPreviewAdd(dataUrl, idx) {
+  var container = document.getElementById('previews-container');
+  var div = document.createElement('div');
+  div.style.cssText = 'position:relative;flex:1;min-width:80px;';
+  div.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:0.5px solid var(--border);">' +
+    '<span style="position:absolute;top:4px;left:4px;background:var(--green);color:white;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">Screen ' + idx + '</span>';
+  container.appendChild(div);
+}
+
+// ─── AI ───────────────────────────────────────────────────
+function analyzeImages() {
+  var apiKey = document.getElementById('api-key').value.trim();
+  if (!apiKey.startsWith('sk-')) {
+    document.getElementById('result-section').style.display = 'block';
+    showResult('<div class="alert alert-err">Najpierw wpisz klucz API Anthropic.</div>'); return;
+  }
+  if (!images.length) {
+    showResult('<div class="alert alert-err">Najpierw wybierz screenshot.</div>'); return;
+  }
+  document.getElementById('result-section').style.display = 'block';
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('action-area').style.display = 'none';
+
+  var count = images.length;
+  var msg = count === 1 ? 'Analizuję zamówienie…' : 'Scalám ' + count + ' screenshoty…';
+  showResult('<div class="analyzing-row"><div class="spinner"></div>' + msg + '</div>');
+
+  // Buduj content — wszystkie obrazki + prompt
+  var contentArr = images.map(function(b64) {
+    return {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}};
+  });
+  var uwagaText = 'UWAGA KRYTYCZNA: Dostajesz ' + count + ' screenshoty TEGO SAMEGO zamowienia. Screenshoty sa zrobione przez przewijanie ekranu wiec moga sie NAKLADAC — ta sama pozycja moze pojawic sie na kilku screenshotach. Twoje zadanie: 1) Zbierz wszystkie pozycje ze wszystkich screenshotow. 2) Jesli ta sama nazwa dania Z TYMI SAMYMI SOSAMI pojawia sie na wielu screenshotach — to DUPLIKAT z nakladki, wpisz ja tylko raz. 3) Jesli ta sama nazwa dania ale INNE SOSY — to rozne pozycje, wpisz kazda osobno. 4) Uwagi klienta i uwagi dla kuriera bierz z tego screenshota gdzie sa widoczne. 5) Dane dostawy bierz z tego screenshota gdzie sa widoczne. 6) Kolejnosc screenshotow nie ma znaczenia.';
+
+
+  var promptText = count === 1 ? MENU_PROMPT : MENU_PROMPT + ' ' + uwagaText;
+  contentArr.push({type:'text', text:promptText});
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514', max_tokens: 2000,
+      messages: [{role:'user', content:contentArr}]
+    })
+  })
+  .then(function(resp) {
+    if (!resp.ok) return resp.json().then(function(e){ throw new Error(e.error ? e.error.message : 'HTTP '+resp.status); });
+    return resp.json();
+  })
+  .then(function(data) {
+    var text = (data.content||[]).map(function(b){return b.text||'';}).join('');
+    orderData = JSON.parse(text.replace(/```json|```/g,'').trim());
+    renderResult(orderData);
+    buildPreview(orderData);
+    document.getElementById('preview-section').style.display = 'block';
+    renderActions(orderData);
+    document.getElementById('action-area').style.display = 'block';
+    // Scroll to action buttons
+    setTimeout(function(){
+      document.getElementById('action-area').scrollIntoView({behavior:'smooth', block:'start'});
+    }, 300);
+  })
+  .catch(function(err) {
+    showResult('<div class="alert alert-err">Błąd: ' + esc(err.message) + '</div>');
+  });
+}
+
+// ─── RENDER RESULT ────────────────────────────────────────
+function renderResult(d) {
+  var html = '<div class="order-meta">';
+  if (d.numer) html += '<span class="meta-badge meta-nr">Nr ' + esc(d.numer) + '</span>';
+  if (d.typ)   html += '<span class="meta-badge ' + (d.typ==='DOSTAWA'?'meta-dostawa':'meta-odbior') + '">' + esc(d.typ) + '</span>';
+  if (d.godz_zam) html += '<span class="meta-badge meta-nr">Zam. ' + esc(d.godz_zam) + '</span>';
+  if (d.termin) html += '<span class="meta-badge meta-nr">Na: ' + esc(d.termin) + '</span>';
+  html += '</div>';
+
+  // Dane dostawy
+  if (d.typ === 'DOSTAWA' && d.delivery) {
+    var del = d.delivery;
+    html += '<div class="delivery-box"><div class="dl">📦 Dane dostawy</div>';
+    if (del.name) html += '<div class="delivery-field"><span class="df-label">Klient</span><span class="df-value">' + esc(del.name) + '</span></div>';
+    if (del.phone) html += '<div class="delivery-field"><span class="df-label">Tel.</span><span class="df-value">' + esc(fmtPhone(del.phone)) + '</span></div>';
+    var addr = (del.street||'') + (del.house?' '+del.house:'') + (del.flat?'/'+del.flat:'');
+    if (del.city) addr = del.city + ', ' + addr;
+    if (addr.trim()) html += '<div class="delivery-field"><span class="df-label">Adres</span><span class="df-value">' + esc(addr) + '</span></div>';
+    var payTxt = del.payment==='online' ? 'Online (brak pobrania)' : del.payment==='card' ? 'Karta ' + (del.amount||'') + ' zł' : 'Gotówka ' + (del.amount||'') + ' zł';
+    html += '<div class="delivery-field"><span class="df-label">Płatność</span><span class="df-value">' + esc(payTxt) + '</span></div>';
+    if (del.notes) html += '<div class="delivery-field"><span class="df-label">Kurier</span><span class="df-value">' + esc(del.notes) + '</span></div>';
+    html += '</div>';
+  }
+
+  // Pozycje
+  (d.pozycje||[]).forEach(function(p) {
+    var bc = p.type==='danie' ? 'badge-danie' : 'badge-extra';
+    var bt = p.type==='danie' ? 'danie' : 'extra';
+    var sosyHtml = p.sosy && p.sosy.length
+      ? '<span class="item-arrow">→</span><span class="item-sosy">' + p.sosy.join(' + ') + '</span>'
+      : '';
+    html += '<div class="item-block"><div class="item-main"><span class="item-qty">' + p.qty + 'x</span><span class="item-name">' + esc(p.name) + sosyHtml + '</span><span class="item-badge ' + bc + '">' + bt + '</span></div></div>';
+  });
+
+  if (d.uwagi && d.uwagi.trim()) {
+    html += '<div class="uwagi-box"><div class="uwagi-label">⚠ Uwagi klienta</div><p>' + esc(d.uwagi) + '</p></div>';
+  }
+  showResult(html);
+}
+
+// ─── RENDER ACTIONS ───────────────────────────────────────
+function renderActions(d) {
+  var area = document.getElementById('action-area');
+  var html = '<div id="action-msg" style="margin-bottom:8px;"></div>';
+
+  if (d.typ === 'DOSTAWA') {
+    // Wszystkie trzy przyciski przy dostawie
+    html += '<button class="btn-action btn-green" onclick="doDelivery()">';
+    html += '<div class="btn-action-inner">📦 Nadajesz + Bon<small>Wypełni formularz i wydrukuje bon</small></div>';
+    html += '</button>';
+    html += '<button class="btn-action btn-blue" onclick="nadajeszyOnly()">';
+    html += '<div class="btn-action-inner">📦 Tylko Nadajesz<small>Tylko wypełni formularz kuriera</small></div>';
+    html += '</button>';
+    html += '<button class="btn-action btn-green" style="background:var(--green-dark);" onclick="printOnly()">';
+    html += '<div class="btn-action-inner">🖨 Tylko Bon<small>Tylko drukuje bon kuchenny</small></div>';
+    html += '</button>';
+  } else {
+    // Odbiór — tylko bon
+    html += '<button class="btn-action btn-green" onclick="printOnly()">';
+    html += '<div class="btn-action-inner">🖨 Drukuj bon kuchenny<small>Odbiór osobisty — bez Nadajesz</small></div>';
+    html += '</button>';
+  }
+
+  html += '<button class="btn-action btn-red-soft" onclick="resetAll()" style="margin-top:4px;">↩ Nowe zamówienie</button>';
+  area.innerHTML = html;
+}
+
+// ─── DOSTAWA: NADAJESZ + BON ──────────────────────────────
+async function doDelivery() {
+  var del = orderData.delivery;
+  if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy!</div>'); return; }
+
+  saveToHistory(orderData);
+
+  // Otwórz Nadajesz z parametrami w URL
+  var amount = del.payment === 'online' ? '' : (del.amount||'');
+  var isCard = del.payment === 'card';
+  var params = new URLSearchParams({
+    phone:  del.phone  || '',
+    street: del.street || '',
+    house:  del.house  || '',
+    flat:   del.flat   || '',
+    city:   del.city   || '',
+    amount: amount,
+    card:   isCard ? '1' : '0',
+    notes:  del.notes  || ''
+  });
+  window.open('https://gastro.nadajesz.pl/?' + params.toString(), '_blank');
+
+  // Drukuj bon
+  await printBon();
+}
+
+// ─── TYLKO NADAJESZ ──────────────────────────────────────
+function nadajeszyOnly() {
+  var del = orderData.delivery;
+  if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy na tym screenshocie!</div>'); return; }
+  saveToHistory(orderData);
+  var amount = del.payment === 'online' ? '' : (del.amount||'');
+  var isCard = del.payment === 'card';
+  var params = new URLSearchParams({
+    phone:  del.phone  || '',
+    street: del.street || '',
+    house:  del.house  || '',
+    flat:   del.flat   || '',
+    city:   del.city   || '',
+    amount: amount,
+    card:   isCard ? '1' : '0',
+    notes:  del.notes  || ''
+  });
+  window.open('https://gastro.nadajesz.pl/?' + params.toString(), '_blank');
+  showActionMsg('<div class="alert alert-ok">Nadajesz otwarty — dane wypełniają się automatycznie.</div>');
+}
+
+// ─── TYLKO BON ────────────────────────────────────────────
+async function printOnly() {
+  saveToHistory(orderData);
+  await printBon();
+}
+
+// ─── RESET ────────────────────────────────────────────────
+function resetAll() {
+  orderData = null; images = [];
+  document.getElementById('previews-container').style.display = 'none';
+  document.getElementById('previews-container').innerHTML = '';
+  document.getElementById('upload-label').querySelector('p').textContent = 'Wybierz screenshot';
+  document.getElementById('upload-label').querySelector('small').textContent = 'Z galerii lub zrób zdjęcie ekranu';
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-input-more').value = '';
+  document.getElementById('upload-actions').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('action-area').style.display = 'none';
+  window.scrollTo(0,0);
+}
+
+// ─── BON BUILDER ──────────────────────────────────────────
+function buildBonLines(d) {
+  var lines = [];
+  lines.push({m:'thick'});
+  lines.push({m:'center', t:'GYMFIT FOOD'});
+  lines.push({m:'thick'});
+
+  var nr = d.numer ? 'NR: '+d.numer : '';
+  var gz = d.godz_zam ? 'GODZ. ZAM: '+d.godz_zam : '';
+  if (nr) lines.push({m:'med', t: nr});
+  if (gz) lines.push({m:'med', t: gz});
+
+  if (d.typ === 'ODBIÓR') {
+    lines.push({m:'center_bold', t:'*** ODBIÓR OSOBISTY ***'});
+  } else {
+    lines.push({m:'med', t: 'DOSTAWA'});
+  }
+
+  if (d.termin) lines.push({m:'med', t:'NA: '+d.termin});
+
+  if (d.typ === 'DOSTAWA' && d.adres && d.adres.length) {
+    d.adres.forEach(function(a){ lines.push({m:'med', t: a}); });
+  }
+
+  // imię i nazwisko klienta
+  if (d.delivery && d.delivery.name) {
+    lines.push({m:'big', t: d.delivery.name.toUpperCase()});
+  }
+
+  lines.push({m:'thick'});
+
+  (d.pozycje||[]).forEach(function(p) {
+    var sosStr = p.sosy && p.sosy.length ? ' -> ' + p.sosy.join(' + ') : '';
+    lines.push({m:'big', t: p.qty+'x '+p.name+sosStr});
+    lines.push({m:'gap'});
+  });
+
+  lines.push({m:'thick'});
+
+  if (d.uwagi && d.uwagi.trim()) {
+    lines.push({m:'center_bold', t:'*** !! UWAGI !! ***'});
+    var words = d.uwagi.split(' ');
+    var cur = '';
+    words.forEach(function(w) {
+      if ((cur+' '+w).trim().length > 32) { lines.push({m:'bold', t:cur.trim()}); cur=w; }
+      else cur = (cur+' '+w).trim();
+    });
+    if (cur) lines.push({m:'bold', t:cur});
+    lines.push({m:'thick'});
+  }
+
+  lines.push({m:'feed'});
+  return lines;
+}
+
+function buildPreview(d) {
+  var lines = buildBonLines(d);
+  var html = '';
+  lines.forEach(function(l) {
+    switch(l.m) {
+      case 'thick':       html += '<span class="bon-line bon-thick">================================</span>'; break;
+      case 'center':      html += '<span class="bon-line bon-center">' + esc(l.t) + '</span>'; break;
+      case 'center_bold': html += '<span class="bon-line bon-center-bold">' + esc(l.t) + '</span>'; break;
+      case 'big':         html += '<span class="bon-line bon-big">' + esc(l.t) + '</span>'; break;
+      case 'med':         html += '<span class="bon-line bon-med">' + esc(l.t) + '</span>'; break;
+      case 'bold':        html += '<span class="bon-line bon-bold">' + esc(l.t) + '</span>'; break;
+      case 'normal':      html += '<span class="bon-line bon-normal">' + esc(l.t) + '</span>'; break;
+      case 'gap':         html += '<span class="bon-gap"></span>'; break;
+      case 'feed':        html += '<span class="bon-feed"></span>'; break;
+    }
+  });
+  document.getElementById('bon-preview').innerHTML = html;
+}
+
+// ─── PRINT ────────────────────────────────────────────────
+async function printBon() {
+  if (!btChar) {
+    showActionMsg('<div class="alert alert-err">Najpierw połącz drukarkę Bluetooth!</div>');
+    return;
+  }
+  var ESC=0x1B, GS=0x1D;
+  var enc = new TextEncoder();
+  var CMD = {
+    init:       [ESC,0x40],
+    center:     [ESC,0x61,0x01],
+    left:       [ESC,0x61,0x00],
+    bold_on:    [ESC,0x45,0x01],
+    bold_off:   [ESC,0x45,0x00],
+    duble:      [GS,0x21,0x11],
+    big_h:      [GS,0x21,0x10],
+    med:        [GS,0x21,0x01],
+    normal:     [GS,0x21,0x00],
+    cut:        [GS,0x56,0x42,0x00]
+  };
+
+  var lines = buildBonLines(orderData);
+  var bytes = [].concat(CMD.init);
+
+  lines.forEach(function(l) {
+    var t = l.t ? plToAscii(l.t) : '';
+    switch(l.m) {
+      case 'thick':
+        bytes = bytes.concat(Array.from(enc.encode('================================\n'))); break;
+      case 'center':
+        bytes = bytes.concat(CMD.center, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.left); break;
+      case 'center_bold':
+        bytes = bytes.concat(CMD.big_h, CMD.bold_on, CMD.center, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal, CMD.left); break;
+      case 'big':
+        bytes = bytes.concat(CMD.duble, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal); break;
+      case 'med':
+        bytes = bytes.concat(CMD.med, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal); break;
+      case 'bold':
+        bytes = bytes.concat(CMD.big_h, CMD.bold_on, Array.from(enc.encode(t+'\n')), CMD.bold_off, CMD.normal); break;
+      case 'normal':
+        bytes = bytes.concat(Array.from(enc.encode(t+'\n'))); break;
+      case 'gap':
+        bytes = bytes.concat(Array.from(enc.encode('\n'))); break;
+      case 'feed':
+        bytes = bytes.concat(Array.from(enc.encode('\n\n\n'))); break;
+    }
+  });
+  bytes = bytes.concat(CMD.cut);
+
+  try {
+    showActionMsg('<div class="alert alert-ok">Drukuję…</div>');
+    var CHUNK = 100;
+    for (var i=0; i<bytes.length; i+=CHUNK) {
+      await btChar.writeValueWithoutResponse(new Uint8Array(bytes.slice(i,i+CHUNK)));
+      await delay(50);
+    }
+    showActionMsg('<div class="alert alert-ok">✓ Bon wydrukowany!</div>');
+    setTimeout(function(){ showActionMsg(''); }, 3000);
+  } catch(err) {
+    showActionMsg('<div class="alert alert-err">Błąd drukowania: ' + esc(err.message) + '</div>');
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────
+// ─── HISTORIA ────────────────────────────────────────────
+function saveToHistory(data) {
+  var history = loadHistory();
+  var entry = {
+    id: Date.now(),
+    numer: data.numer || '',
+    typ: data.typ || '',
+    godz_zam: data.godz_zam || '',
+    termin: data.termin || '',
+    name: (data.delivery && data.delivery.name) ? data.delivery.name : '',
+    adres: data.adres || [],
+    uwagi: data.uwagi || '',
+    pozycje: data.pozycje || [],
+    delivery: data.delivery || null,
+    ts: Date.now(),
+    dateStr: new Date().toLocaleDateString('pl-PL', {weekday:'long', day:'numeric', month:'long'})
+  };
+  // Sprawdź duplikat po numerze zamówienia
+  if (entry.numer) {
+    history.forEach(function(h) { if (h.numer === entry.numer) h.duplicate = true; });
+    var existing = history.filter(function(h){ return h.numer === entry.numer; });
+    if (existing.length > 0) entry.duplicate = true;
+  }
+  history.unshift(entry);
+  localStorage.setItem('gf_history', JSON.stringify(history));
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem('gf_history') || '[]'); } catch(e) { return []; }
+}
+
+function showHistory() {
+  var history = loadHistory();
+  var container = document.getElementById('history-list');
+  if (!history.length) {
+    container.innerHTML = '<div class="history-empty">Brak zamówień w historii</div>';
+    showScreen('s-history'); return;
+  }
+  // Grupuj po dniach
+  var days = {};
+  var dayOrder = [];
+  history.forEach(function(h) {
+    var d = new Date(h.ts).toLocaleDateString('pl-PL', {weekday:'long', day:'numeric', month:'long'});
+    if (!days[d]) { days[d] = []; dayOrder.push(d); }
+    days[d].push(h);
+  });
+  var html = '';
+  dayOrder.forEach(function(day) {
+    html += '<div class="history-day"><div class="history-day-label">' + day + '</div>';
+    days[day].forEach(function(h) {
+      var dupBadge = h.duplicate ? '<span class="history-dup-badge">DUPLIKAT</span>' : '';
+      var typCls = h.typ === 'DOSTAWA' ? 'meta-dostawa' : 'meta-odbior';
+      var nameStr = h.name ? h.name : (h.adres && h.adres.length ? h.adres[0] : '—');
+      html += '<div class="history-item' + (h.duplicate ? ' duplicate' : '') + '">';
+      html += '<div class="history-item-info">';
+      html += '<div class="history-item-top"><span class="history-nr">Nr ' + esc(h.numer||'?') + '</span><span class="history-time">' + esc(h.godz_zam||'') + '</span>' + dupBadge + '</div>';
+      html += '<div class="history-name">' + esc(nameStr) + '</div>';
+      html += '</div>';
+      html += '<span class="history-typ meta-badge ' + typCls + '">' + esc(h.typ||'') + '</span>';
+      html += '<div class="history-actions">';
+      html += '<button class="history-btn" onclick="reprintFromHistory(' + h.id + ')" title="Drukuj ponownie">🖨</button>';
+      if (h.typ === 'DOSTAWA' && h.delivery) {
+        html += '<button class="history-btn" onclick="nadajesyFromHistory(' + h.id + ')" title="Otwórz Nadajesz">📦</button>';
+      }
+      html += '<button class="history-btn del" onclick="deleteFromHistory(' + h.id + ')" title="Usuń">🗑</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+  showScreen('s-history');
+}
+
+function reprintFromHistory(id) {
+  var history = loadHistory();
+  var entry = history.find(function(h){ return h.id === id; });
+  if (!entry) return;
+  orderData = entry;
+  printBon();
+}
+
+function nadajesyFromHistory(id) {
+  var history = loadHistory();
+  var entry = history.find(function(h){ return h.id === id; });
+  if (!entry || !entry.delivery) return;
+  var del = entry.delivery;
+  var amount = del.payment === 'online' ? '' : (del.amount||'');
+  var isCard = del.payment === 'card';
+  var params = new URLSearchParams({
+    phone: del.phone||'', street: del.street||'', house: del.house||'',
+    flat: del.flat||'', city: del.city||'', amount: amount,
+    card: isCard?'1':'0', notes: del.notes||''
+  });
+  window.open('https://gastro.nadajesz.pl/?' + params.toString(), '_blank');
+}
+
+function deleteFromHistory(id) {
+  var history = loadHistory().filter(function(h){ return h.id !== id; });
+  // Przelicz duplikaty po usunięciu
+  var numCount = {};
+  history.forEach(function(h){ if(h.numer) numCount[h.numer] = (numCount[h.numer]||0) + 1; });
+  history.forEach(function(h){ h.duplicate = h.numer && numCount[h.numer] > 1; });
+  localStorage.setItem('gf_history', JSON.stringify(history));
+  showHistory();
+}
+
+function clearHistory() {
+  var pin = prompt('Podaj PIN:');
+  if (pin !== '2222') { alert('Nieprawidłowy PIN.'); return; }
+  localStorage.removeItem('gf_history');
+  showHistory();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function showMain() { showScreen('s-start'); }
+
+function plToAscii(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/ą/g,'a').replace(/Ą/g,'A')
+    .replace(/ć/g,'c').replace(/Ć/g,'C')
+    .replace(/ę/g,'e').replace(/Ę/g,'E')
+    .replace(/ł/g,'l').replace(/Ł/g,'L')
+    .replace(/ń/g,'n').replace(/Ń/g,'N')
+    .replace(/ó/g,'o').replace(/Ó/g,'O')
+    .replace(/ś/g,'s').replace(/Ś/g,'S')
+    .replace(/ź/g,'z').replace(/Ź/g,'Z')
+    .replace(/ż/g,'z').replace(/Ż/g,'Z');
+}
+function showResult(h) { document.getElementById('result-list').innerHTML = h; }
+function showActionMsg(h) { var el = document.getElementById('action-msg'); if(el) el.innerHTML = h; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function delay(ms) { return new Promise(function(r){ setTimeout(r,ms); }); }
+function fmtPhone(p) {
+  var c = (p||'').replace(/\D/g,'');
+  if (c.length===9) return c.slice(0,3)+' '+c.slice(3,6)+' '+c.slice(6);
+  return p||'—';
+}
+</script>
+</body>
+</html>
