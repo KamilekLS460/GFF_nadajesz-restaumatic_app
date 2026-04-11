@@ -165,7 +165,7 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
     <h1>GymFit Food</h1>
     <p>Restaumatica → Nadajesz + Bon</p>
   </div>
-  <button class="btn-icon" onclick="showHistory()" style="margin-left:auto;" title="Historia zamówień">🕐</button>
+  <button onclick="showHistory()" style="margin-left:auto;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);font-weight:600;padding:4px 8px;border-radius:8px;">🕐 Historia</button>
 </div>
 
 <!-- SCREEN: HISTORIA -->
@@ -627,6 +627,8 @@ async function doDelivery() {
   var del = orderData.delivery;
   if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy!</div>'); return; }
 
+  saveToHistory(orderData);
+
   // Otwórz Nadajesz z parametrami w URL
   var amount = del.payment === 'online' ? '' : (del.amount||'');
   var isCard = del.payment === 'card';
@@ -650,6 +652,7 @@ async function doDelivery() {
 function nadajeszyOnly() {
   var del = orderData.delivery;
   if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy na tym screenshocie!</div>'); return; }
+  saveToHistory(orderData);
   var amount = del.payment === 'online' ? '' : (del.amount||'');
   var isCard = del.payment === 'card';
   var params = new URLSearchParams({
@@ -668,6 +671,7 @@ function nadajeszyOnly() {
 
 // ─── TYLKO BON ────────────────────────────────────────────
 async function printOnly() {
+  saveToHistory(orderData);
   await printBon();
 }
 
@@ -817,7 +821,6 @@ async function printBon() {
       await btChar.writeValueWithoutResponse(new Uint8Array(bytes.slice(i,i+CHUNK)));
       await delay(50);
     }
-    saveToHistory(orderData);
     showActionMsg('<div class="alert alert-ok">✓ Bon wydrukowany!</div>');
     setTimeout(function(){ showActionMsg(''); }, 3000);
   } catch(err) {
