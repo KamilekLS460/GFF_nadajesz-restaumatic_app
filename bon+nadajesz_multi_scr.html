@@ -113,6 +113,23 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
 .bon-gap { display: block; height: 10px; }
 .bon-feed { display: block; height: 30px; }
 
+/* HISTORIA */
+.history-day { margin-bottom: 16px; }
+.history-day-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-faint); text-transform: uppercase; margin-bottom: 8px; padding: 0 2px; }
+.history-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.history-item.duplicate { border-color: #D85A30; background: var(--red-light); }
+.history-item-info { flex: 1; min-width: 0; }
+.history-item-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.history-nr { font-size: 13px; font-weight: 700; color: var(--text); }
+.history-time { font-size: 12px; color: var(--text-faint); }
+.history-dup-badge { font-size: 10px; font-weight: 700; background: #D85A30; color: white; padding: 2px 6px; border-radius: 4px; }
+.history-name { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-typ { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+.history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.history-btn { width: 34px; height: 34px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong); background: var(--surface); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.history-btn.del { border-color: #D85A30; }
+.history-empty { text-align: center; padding: 32px 20px; color: var(--text-faint); font-size: 14px; }
+
 /* ACTION BUTTONS */
 .action-area { margin-top: 4px; }
 .btn-action { width: 100%; padding: 16px; border-radius: var(--radius); border: none; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -148,6 +165,17 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
     <h1>GymFit Food</h1>
     <p>Restaumatica → Nadajesz + Bon</p>
   </div>
+  <button onclick="showHistory()" style="margin-left:auto;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);font-weight:600;padding:4px 8px;border-radius:8px;">🕐 Historia</button>
+</div>
+
+<!-- SCREEN: HISTORIA -->
+<div id="s-history" class="screen">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <button class="btn-sm" onclick="showMain()">← Wróć</button>
+    <h2 style="font-size:16px;font-weight:600;flex:1;">Historia zamówień</h2>
+    <button class="btn-sm danger" onclick="clearHistory()">Wyczyść</button>
+  </div>
+  <div id="history-list"></div>
 </div>
 
 <!-- SCREEN: START -->
@@ -186,10 +214,10 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
     <div class="card-label">Screenshoty z Restaumatica</div>
     <div id="previews-container" style="display:none;margin-bottom:10px;"></div>
     <label class="upload-label" id="upload-label">
-      <input type="file" id="file-input" accept="image/*" onchange="handleFile(this)" />
+      <input type="file" id="file-input" accept="image/*" multiple onchange="handleFile(this)" />
       <div class="upload-icon">📋</div>
-      <p id="upload-text">Wybierz screenshot</p>
-      <small id="upload-subtext">Z galerii lub zrób zdjęcie ekranu</small>
+      <p id="upload-text">Wybierz screenshoty</p>
+      <small id="upload-subtext">Możesz zaznaczyć kilka naraz</small>
     </label>
     <div id="upload-actions" style="display:none;margin-top:10px;">
       <label class="upload-label" style="padding:14px 20px;margin-bottom:8px;" id="add-more-label">
@@ -229,7 +257,7 @@ var images = []; // tablica base64 screenshotów
 var btChar = null, btDevice = null;
 
 // ─── MENU PROMPT ─────────────────────────────────────────
-var MENU_PROMPT = `Masz screenshot zamówienia z Restaumatica dla GymFit Food.
+var MENU_PROMPT = `Masz jeden lub więcej screenshotów tego samego zamówienia z Restaumatica dla GymFit Food. Screenshoty mogą być w dowolnej kolejności — sam ustal który zawiera dane dostawy a który dania.
 
 Wyciągnij WSZYSTKIE dane zamówienia — dane klienta/dostawy ORAZ pozycje do kuchni.
 
@@ -274,18 +302,21 @@ SOSY (tablica "sosy" przy daniu):
 POMIJAJ: "opakowanie dowóz", "opakowanie wynos", "Dostawa" jako pozycja cenowa.
 
 ZASADY POZYCJI:
-- Każda linia na screenshocie = osobna pozycja w JSON (NIGDY nie scalaj)
-- qty = wartość z pola "X szt." przy danej linii
-- Sosy i dodatki pod daną pozycją należą tylko do tej pozycji
+- Każda linia na screenshocie = osobna pozycja w JSON
+- NIGDY nie scalaj dwóch osobnych linii w jedną, nawet jeśli mają tę samą nazwę dania
+- Dwie linie "Sprężynki" z różnymi sosami = dwie osobne pozycje w JSON
+- qty = wartość z pola "X szt." przy danej linii — nie sumuj
+- Sosy i dodatki widoczne POD daną pozycją należą tylko do tej pozycji, nie do następnej
+- Przy wielu screenshotach: zbierz WSZYSTKIE pozycje ze WSZYSTKICH screenshotów — nie pomijaj żadnej
 - Nieznane pozycje → oryginalna nazwa, type:"extra"
 
 DANE DOSTAWY (tylko przy DOSTAWIE):
 - name: imię i nazwisko klienta
 - phone: numer telefonu tylko cyfry bez +48
-- street: nazwa ulicy bez numeru, bez "ul."
-- house: numer domu np. "3" albo "15B"
-- flat: numer lokalu/mieszkania, "" jeśli brak
-- city: miasto
+- street: nazwa ulicy bez numeru, bez "ul." — bierz WYŁĄCZNIE z pola "Adres", IGNORUJ pole "Strefa" (zawiera info o strefie dostawy, nie adres klienta)
+- house: numer domu np. "3" albo "15B" — bierz z pola "Adres"
+- flat: numer lokalu/mieszkania, "" jeśli brak — bierz z pola "Adres"
+- city: miasto — bierz z pola "Adres", IGNORUJ nazwy stref jak "Jaroszówka", "strefa 3km" itp.
 - amount: kwota łącznie jako liczba z kropką np. "83.00"
 - payment: "online" / "card" / "cash"
 - notes: TYLKO info dla kuriera (piętro, wejście, kod do klatki) — NIE przepisuj uwag o jedzeniu
@@ -398,20 +429,30 @@ function setBt(msg, cls) {
 
 // ─── FILE ─────────────────────────────────────────────────
 function handleFile(input) {
-  var file = input.files[0]; if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var dataUrl = e.target.result;
-    images = [dataUrl.split(',')[1]];
-    renderPreviews([dataUrl]);
-    document.getElementById('upload-label').querySelector('p').textContent = 'Zmień screen';
-    document.getElementById('upload-label').querySelector('small').textContent = 'Zastąpi pierwszy screen';
-    document.getElementById('upload-actions').style.display = 'block';
-    document.getElementById('result-section').style.display = 'none';
-    document.getElementById('preview-section').style.display = 'none';
-    document.getElementById('action-area').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+  var files = Array.from(input.files);
+  if (!files.length) return;
+  images = [];
+  var dataUrls = [];
+  var loaded = 0;
+  files.forEach(function(file, idx) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      dataUrls[idx] = e.target.result;
+      images[idx] = e.target.result.split(',')[1];
+      loaded++;
+      if (loaded === files.length) {
+        renderPreviews(dataUrls);
+        var count = files.length;
+        document.getElementById('upload-label').querySelector('p').textContent = count === 1 ? 'Zmień screen' : 'Zmień screenshoty';
+        document.getElementById('upload-label').querySelector('small').textContent = count === 1 ? 'Zastąpi screen' : 'Wgrano ' + count + ' screenshoty — zastąpi wszystkie';
+        document.getElementById('upload-actions').style.display = 'block';
+        document.getElementById('result-section').style.display = 'none';
+        document.getElementById('preview-section').style.display = 'none';
+        document.getElementById('action-area').style.display = 'none';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function handleFileMore(input) {
@@ -473,7 +514,9 @@ function analyzeImages() {
   var contentArr = images.map(function(b64) {
     return {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}};
   });
-  var uwagaText = 'UWAGA: Dostajesz ' + count + ' screenshoty tego samego zamówienia z roznych pozycji przewiniecia. Scal je w jedno zamowienie. Kazda unikalna pozycja (unikalna kombinacja nazwy dania + sosy) pojawia sie tylko raz. Dane dostawy (adres, telefon, kwota) bierz z tego screenshota gdzie sa widoczne.';
+  var uwagaText = 'UWAGA KRYTYCZNA: Dostajesz ' + count + ' screenshoty TEGO SAMEGO zamowienia. Screenshoty sa zrobione przez przewijanie ekranu wiec moga sie NAKLADAC — ta sama pozycja moze pojawic sie na kilku screenshotach. Twoje zadanie: 1) Zbierz wszystkie pozycje ze wszystkich screenshotow. 2) Jesli ta sama nazwa dania Z TYMI SAMYMI SOSAMI pojawia sie na wielu screenshotach — to DUPLIKAT z nakladki, wpisz ja tylko raz. 3) Jesli ta sama nazwa dania ale INNE SOSY — to rozne pozycje, wpisz kazda osobno. 4) Uwagi klienta i uwagi dla kuriera bierz z tego screenshota gdzie sa widoczne. 5) Dane dostawy bierz z tego screenshota gdzie sa widoczne. 6) Kolejnosc screenshotow nie ma znaczenia.';
+
+
   var promptText = count === 1 ? MENU_PROMPT : MENU_PROMPT + ' ' + uwagaText;
   contentArr.push({type:'text', text:promptText});
 
@@ -584,6 +627,8 @@ async function doDelivery() {
   var del = orderData.delivery;
   if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy!</div>'); return; }
 
+  saveToHistory(orderData);
+
   // Otwórz Nadajesz z parametrami w URL
   var amount = del.payment === 'online' ? '' : (del.amount||'');
   var isCard = del.payment === 'card';
@@ -607,6 +652,7 @@ async function doDelivery() {
 function nadajeszyOnly() {
   var del = orderData.delivery;
   if (!del) { showActionMsg('<div class="alert alert-err">Brak danych dostawy na tym screenshocie!</div>'); return; }
+  saveToHistory(orderData);
   var amount = del.payment === 'online' ? '' : (del.amount||'');
   var isCard = del.payment === 'card';
   var params = new URLSearchParams({
@@ -625,6 +671,7 @@ function nadajeszyOnly() {
 
 // ─── TYLKO BON ────────────────────────────────────────────
 async function printOnly() {
+  saveToHistory(orderData);
   await printBon();
 }
 
@@ -666,6 +713,11 @@ function buildBonLines(d) {
 
   if (d.typ === 'DOSTAWA' && d.adres && d.adres.length) {
     d.adres.forEach(function(a){ lines.push({m:'med', t: a}); });
+  }
+
+  // imię i nazwisko klienta
+  if (d.delivery && d.delivery.name) {
+    lines.push({m:'big', t: d.delivery.name.toUpperCase()});
   }
 
   lines.push({m:'thick'});
@@ -777,6 +829,129 @@ async function printBon() {
 }
 
 // ─── HELPERS ─────────────────────────────────────────────
+// ─── HISTORIA ────────────────────────────────────────────
+function saveToHistory(data) {
+  var history = loadHistory();
+  var entry = {
+    id: Date.now(),
+    numer: data.numer || '',
+    typ: data.typ || '',
+    godz_zam: data.godz_zam || '',
+    termin: data.termin || '',
+    name: (data.delivery && data.delivery.name) ? data.delivery.name : '',
+    adres: data.adres || [],
+    uwagi: data.uwagi || '',
+    pozycje: data.pozycje || [],
+    delivery: data.delivery || null,
+    ts: Date.now(),
+    dateStr: new Date().toLocaleDateString('pl-PL', {weekday:'long', day:'numeric', month:'long'})
+  };
+  // Sprawdź duplikat po numerze zamówienia
+  if (entry.numer) {
+    history.forEach(function(h) { if (h.numer === entry.numer) h.duplicate = true; });
+    var existing = history.filter(function(h){ return h.numer === entry.numer; });
+    if (existing.length > 0) entry.duplicate = true;
+  }
+  history.unshift(entry);
+  localStorage.setItem('gf_history', JSON.stringify(history));
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem('gf_history') || '[]'); } catch(e) { return []; }
+}
+
+function showHistory() {
+  var history = loadHistory();
+  var container = document.getElementById('history-list');
+  if (!history.length) {
+    container.innerHTML = '<div class="history-empty">Brak zamówień w historii</div>';
+    showScreen('s-history'); return;
+  }
+  // Grupuj po dniach
+  var days = {};
+  var dayOrder = [];
+  history.forEach(function(h) {
+    var d = new Date(h.ts).toLocaleDateString('pl-PL', {weekday:'long', day:'numeric', month:'long'});
+    if (!days[d]) { days[d] = []; dayOrder.push(d); }
+    days[d].push(h);
+  });
+  var html = '';
+  dayOrder.forEach(function(day) {
+    html += '<div class="history-day"><div class="history-day-label">' + day + '</div>';
+    days[day].forEach(function(h) {
+      var dupBadge = h.duplicate ? '<span class="history-dup-badge">DUPLIKAT</span>' : '';
+      var typCls = h.typ === 'DOSTAWA' ? 'meta-dostawa' : 'meta-odbior';
+      var nameStr = h.name ? h.name : (h.adres && h.adres.length ? h.adres[0] : '—');
+      html += '<div class="history-item' + (h.duplicate ? ' duplicate' : '') + '">';
+      html += '<div class="history-item-info">';
+      html += '<div class="history-item-top"><span class="history-nr">Nr ' + esc(h.numer||'?') + '</span><span class="history-time">' + esc(h.godz_zam||'') + '</span>' + dupBadge + '</div>';
+      html += '<div class="history-name">' + esc(nameStr) + '</div>';
+      html += '</div>';
+      html += '<span class="history-typ meta-badge ' + typCls + '">' + esc(h.typ||'') + '</span>';
+      html += '<div class="history-actions">';
+      html += '<button class="history-btn" onclick="reprintFromHistory(' + h.id + ')" title="Drukuj ponownie">🖨</button>';
+      if (h.typ === 'DOSTAWA' && h.delivery) {
+        html += '<button class="history-btn" onclick="nadajesyFromHistory(' + h.id + ')" title="Otwórz Nadajesz">📦</button>';
+      }
+      html += '<button class="history-btn del" onclick="deleteFromHistory(' + h.id + ')" title="Usuń">🗑</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+  showScreen('s-history');
+}
+
+function reprintFromHistory(id) {
+  var history = loadHistory();
+  var entry = history.find(function(h){ return h.id === id; });
+  if (!entry) return;
+  orderData = entry;
+  printBon();
+}
+
+function nadajesyFromHistory(id) {
+  var history = loadHistory();
+  var entry = history.find(function(h){ return h.id === id; });
+  if (!entry || !entry.delivery) return;
+  var del = entry.delivery;
+  var amount = del.payment === 'online' ? '' : (del.amount||'');
+  var isCard = del.payment === 'card';
+  var params = new URLSearchParams({
+    phone: del.phone||'', street: del.street||'', house: del.house||'',
+    flat: del.flat||'', city: del.city||'', amount: amount,
+    card: isCard?'1':'0', notes: del.notes||''
+  });
+  window.open('https://gastro.nadajesz.pl/?' + params.toString(), '_blank');
+}
+
+function deleteFromHistory(id) {
+  var pin = prompt('Podaj PIN:');
+  if (pin !== '2222') { alert('Nieprawidłowy PIN.'); return; }
+  var history = loadHistory().filter(function(h){ return h.id !== id; });
+  // Przelicz duplikaty po usunięciu
+  var numCount = {};
+  history.forEach(function(h){ if(h.numer) numCount[h.numer] = (numCount[h.numer]||0) + 1; });
+  history.forEach(function(h){ h.duplicate = h.numer && numCount[h.numer] > 1; });
+  localStorage.setItem('gf_history', JSON.stringify(history));
+  showHistory();
+}
+
+function clearHistory() {
+  var pin = prompt('Podaj PIN:');
+  if (pin !== '2222') { alert('Nieprawidłowy PIN.'); return; }
+  localStorage.removeItem('gf_history');
+  showHistory();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function showMain() { showScreen('s-start'); }
+
 function plToAscii(s) {
   if (!s) return '';
   return String(s)
