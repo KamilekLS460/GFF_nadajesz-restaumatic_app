@@ -99,6 +99,8 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
 .uwagi-box { background: #FFF8E6; border: 1.5px solid #EF9F27; border-radius: var(--radius-sm); padding: 11px 13px; margin-top: 10px; }
 .uwagi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #854F0B; text-transform: uppercase; margin-bottom: 4px; }
 .uwagi-box p { font-size: 14px; color: #412402; font-weight: 600; line-height: 1.4; }
+.courier-notes { width: 100%; min-height: 92px; margin-top: 8px; padding: 10px 12px; border: 1px solid #EF9F27; border-radius: var(--radius-sm); font: inherit; line-height: 1.4; resize: vertical; background: #fff; color: var(--text); }
+.courier-notes:focus { outline: 2px solid rgba(239,159,39,.25); border-color: #BA7517; }
 
 /* BON PREVIEW */
 .bon-preview { font-family: 'Courier New', monospace; background: #f9f8f4; border: 1px solid #ddd; border-radius: var(--radius-sm); padding: 14px; color: #111; overflow-x: auto; }
@@ -254,6 +256,7 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
 // ─── DANE ────────────────────────────────────────────────
 var orderData = null;
 var images = []; // tablica base64 screenshotów
+var imageMimes = []; // rzeczywisty typ każdego obrazu
 var btChar = null, btDevice = null;
 
 // ─── MENU PROMPT ─────────────────────────────────────────
@@ -324,7 +327,9 @@ DANE DOSTAWY (tylko przy DOSTAWIE):
 - city: miasto — bierz z pola "Adres", IGNORUJ nazwy stref jak "Jaroszówka", "strefa 3km" itp.
 - amount: kwota łącznie jako liczba z kropką np. "83.00"
 - payment: "online" / "card" / "cash"
-- notes: TYLKO info dla kuriera (piętro, wejście, kod do klatki) — NIE przepisuj uwag o jedzeniu
+- notes_raw: przepisz DOKŁADNIE cały tekst widoczny w sekcji "Uwagi klienta". Nie streszczaj, nie poprawiaj stylu i niczego nie pomijaj.
+- notes: WSZYSTKIE informacje przydatne kurierowi: wskazówki dojazdu, miejsce przekazania, punkt orientacyjny, brama, parking, zakaz wjazdu, piętro, wejście, domofon, kod, nazwa firmy/lokalu, prośba o telefon lub wcześniejszy kontakt i dodatkowy numer telefonu. Przepisz wiernie, nie streszczaj. Pomiń wyłącznie uwagi dotyczące przygotowania jedzenia.
+- uwagi: wyłącznie informacje dla kuchni dotyczące przygotowania jedzenia. Nie wpisuj tu instrukcji dojazdu ani kontaktu z klientem.
 
 Odpowiedz WYŁĄCZNIE JSON (zero tekstu, zero backtick-ów):
 {
@@ -347,11 +352,12 @@ Odpowiedz WYŁĄCZNIE JSON (zero tekstu, zero backtick-ów):
     "city": "Białystok",
     "amount": "83.00",
     "payment": "online",
+    "notes_raw": "Proszę bez sosu. Kurier ma zadzwonić 10 minut wcześniej.",
     "notes": "piętro 5"
   }
 }
 typ = "DOSTAWA" lub "ODBIÓR"
-KRYTYCZNE: W polach tekstowych (uwagi, adres, notes) NIGDY nie używaj cudzysłowów " — zastąp je apostrofem ' lub pomiń. Cudzysłowy psują JSON.
+Zachowuj cudzysłowy występujące w tekście klienta — format narzędzia zapisze je poprawnie.
 Przy ODBIORZE: delivery = null, adres = []`;
 
 // ─── API KEY ──────────────────────────────────────────────
@@ -438,6 +444,7 @@ function handleFile(input) {
   var files = Array.from(input.files);
   if (!files.length) return;
   images = [];
+  imageMimes = [];
   var dataUrls = [];
   var loaded = 0;
   files.forEach(function(file, idx) {
@@ -445,6 +452,7 @@ function handleFile(input) {
     reader.onload = function(e) {
       dataUrls[idx] = e.target.result;
       images[idx] = e.target.result.split(',')[1];
+      imageMimes[idx] = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
       loaded++;
       if (loaded === files.length) {
         renderPreviews(dataUrls);
@@ -467,6 +475,7 @@ function handleFileMore(input) {
   reader.onload = function(e) {
     var dataUrl = e.target.result;
     images.push(dataUrl.split(',')[1]);
+    imageMimes.push(file.type === 'image/png' ? 'image/png' : 'image/jpeg');
     // Odśwież podglądy
     var allDataUrls = [];
     // Musimy przebudować z images — trzymamy też dataUrls
@@ -517,8 +526,8 @@ function analyzeImages() {
   showResult('<div class="analyzing-row"><div class="spinner"></div>' + msg + '</div>');
 
   // Buduj content — wszystkie obrazki + prompt
-  var contentArr = images.map(function(b64) {
-    return {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}};
+  var contentArr = images.map(function(b64, idx) {
+    return {type:'image', source:{type:'base64', media_type:imageMimes[idx] || 'image/jpeg', data:b64}};
   });
   var uwagaText = 'UWAGA KRYTYCZNA: Dostajesz ' + count + ' screenshoty TEGO SAMEGO zamowienia. Screenshoty sa zrobione przez przewijanie ekranu wiec moga sie NAKLADAC — ta sama pozycja moze pojawic sie na kilku screenshotach. Twoje zadanie: 1) Zbierz wszystkie pozycje ze wszystkich screenshotow. 2) Jesli ta sama nazwa dania Z TYMI SAMYMI SOSAMI pojawia sie na wielu screenshotach — to DUPLIKAT z nakladki, wpisz ja tylko raz. 3) Jesli ta sama nazwa dania ale INNE SOSY — to rozne pozycje, wpisz kazda osobno. 4) Uwagi klienta i uwagi dla kuriera bierz z tego screenshota gdzie sa widoczne. 5) Dane dostawy bierz z tego screenshota gdzie sa widoczne. 6) Kolejnosc screenshotow nie ma znaczenia.';
 
@@ -536,6 +545,29 @@ function analyzeImages() {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5', max_tokens: 2000,
+      tools: [{
+        name: 'submit_order',
+        description: 'Zwraca kompletnie odczytane zamówienie w wymaganej strukturze.',
+        input_schema: {
+          type: 'object', additionalProperties: false,
+          properties: {
+            numer: {type:'string'}, typ: {type:'string', enum:['DOSTAWA','ODBIÓR']},
+            godz_zam: {type:'string'}, termin: {type:'string'},
+            adres: {type:'array', items:{type:'string'}}, uwagi: {type:'string'},
+            pozycje: {type:'array', items:{type:'object', additionalProperties:false, properties:{
+              qty:{type:'number'}, name:{type:'string'}, sosy:{type:'array',items:{type:'string'}}, type:{type:'string',enum:['danie','extra']}
+            }, required:['qty','name','sosy','type']}},
+            delivery: {anyOf:[
+              {type:'null'},
+              {type:'object', additionalProperties:false, properties:{
+                name:{type:'string'}, phone:{type:'string'}, street:{type:'string'}, house:{type:'string'}, flat:{type:'string'}, city:{type:'string'}, amount:{type:'string'}, payment:{type:'string',enum:['online','card','cash']}, notes_raw:{type:'string'}, notes:{type:'string'}
+              }, required:['name','phone','street','house','flat','city','amount','payment','notes_raw','notes']}
+            ]}
+          },
+          required:['numer','typ','godz_zam','termin','adres','uwagi','pozycje','delivery']
+        }
+      }],
+      tool_choice: {type:'tool', name:'submit_order'},
       messages: [{role:'user', content:contentArr}]
     })
   })
@@ -544,21 +576,14 @@ function analyzeImages() {
     return resp.json();
   })
   .then(function(data) {
-    var text = (data.content||[]).map(function(b){return b.text||'';}).join('');
-    var cleaned = text.replace(/```json|```/g,'').trim();
-    // Próba parsowania, jeśli błąd — spróbuj naprawić cudzysłowy
-    try {
+    var toolBlock = (data.content||[]).find(function(b){ return b.type === 'tool_use' && b.name === 'submit_order'; });
+    if (toolBlock && toolBlock.input) {
+      orderData = toolBlock.input;
+    } else {
+      var text = (data.content||[]).map(function(b){return b.text||'';}).join('');
+      var cleaned = text.replace(/```json|```/g,'').trim();
+      if (!cleaned) throw new Error('Claude nie zwrócił danych zamówienia. Spróbuj ponownie.');
       orderData = JSON.parse(cleaned);
-    } catch(e1) {
-      // Zamień polskie cudzysłowy na zwykłe apostrofy
-      var fixed = cleaned
-        .replace(/„/g, '"').replace(/"/g, '"').replace(/"/g, '"')
-        .replace(/'/g, "'").replace(/'/g, "'");
-      try {
-        orderData = JSON.parse(fixed);
-      } catch(e2) {
-        throw new Error('Błąd parsowania JSON: ' + e2.message + '. Spróbuj ponownie.');
-      }
     }
     renderResult(orderData);
     buildPreview(orderData);
@@ -595,7 +620,8 @@ function renderResult(d) {
     if (addr.trim()) html += '<div class="delivery-field"><span class="df-label">Adres</span><span class="df-value">' + esc(addr) + '</span></div>';
     var payTxt = del.payment==='online' ? 'Online (brak pobrania)' : del.payment==='card' ? 'Karta ' + (del.amount||'') + ' zł' : 'Gotówka ' + (del.amount||'') + ' zł';
     html += '<div class="delivery-field"><span class="df-label">Płatność</span><span class="df-value">' + esc(payTxt) + '</span></div>';
-    if (del.notes) html += '<div class="delivery-field"><span class="df-label">Kurier</span><span class="df-value">' + esc(del.notes) + '</span></div>';
+    if (del.notes_raw) html += '<div class="delivery-field"><span class="df-label">Oryginalne uwagi klienta</span><span class="df-value">' + esc(del.notes_raw) + '</span></div>';
+    html += '<div class="delivery-field" style="display:block"><span class="df-label">Uwagi dla kuriera — sprawdź i popraw</span><textarea class="courier-notes" oninput="orderData.delivery.notes=this.value">' + esc(del.notes||'') + '</textarea></div>';
     html += '</div>';
   }
 
@@ -697,7 +723,7 @@ async function printOnly() {
 
 // ─── RESET ────────────────────────────────────────────────
 function resetAll() {
-  orderData = null; images = [];
+  orderData = null; images = []; imageMimes = [];
   document.getElementById('previews-container').style.display = 'none';
   document.getElementById('previews-container').innerHTML = '';
   document.getElementById('upload-label').querySelector('p').textContent = 'Wybierz screenshot';
