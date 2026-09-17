@@ -351,6 +351,7 @@ Odpowiedz WYŁĄCZNIE JSON (zero tekstu, zero backtick-ów):
   }
 }
 typ = "DOSTAWA" lub "ODBIÓR"
+KRYTYCZNE: W polach tekstowych (uwagi, adres, notes) NIGDY nie używaj cudzysłowów " — zastąp je apostrofem ' lub pomiń. Cudzysłowy psują JSON.
 Przy ODBIORZE: delivery = null, adres = []`;
 
 // ─── API KEY ──────────────────────────────────────────────
@@ -534,7 +535,7 @@ function analyzeImages() {
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5', max_tokens: 2000,
+      model: 'claude-sonnet-4-20250514', max_tokens: 2000,
       messages: [{role:'user', content:contentArr}]
     })
   })
@@ -544,7 +545,21 @@ function analyzeImages() {
   })
   .then(function(data) {
     var text = (data.content||[]).map(function(b){return b.text||'';}).join('');
-    orderData = JSON.parse(text.replace(/```json|```/g,'').trim());
+    var cleaned = text.replace(/```json|```/g,'').trim();
+    // Próba parsowania, jeśli błąd — spróbuj naprawić cudzysłowy
+    try {
+      orderData = JSON.parse(cleaned);
+    } catch(e1) {
+      // Zamień polskie cudzysłowy na zwykłe apostrofy
+      var fixed = cleaned
+        .replace(/„/g, '"').replace(/"/g, '"').replace(/"/g, '"')
+        .replace(/'/g, "'").replace(/'/g, "'");
+      try {
+        orderData = JSON.parse(fixed);
+      } catch(e2) {
+        throw new Error('Błąd parsowania JSON: ' + e2.message + '. Spróbuj ponownie.');
+      }
+    }
     renderResult(orderData);
     buildPreview(orderData);
     document.getElementById('preview-section').style.display = 'block';
