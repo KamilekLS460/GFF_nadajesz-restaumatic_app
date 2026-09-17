@@ -31,6 +31,7 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
 .topbar-icon svg { width: 20px; height: 20px; fill: white; }
 .topbar-title h1 { font-size: 16px; font-weight: 600; }
 .topbar-title p { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.app-version { display: block; margin-top: 2px; font-size: 9px; line-height: 1.2; color: var(--text-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* CARDS */
 .card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 14px 16px; margin-bottom: 12px; }
@@ -166,6 +167,7 @@ body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var
   <div class="topbar-title">
     <h1>GymFit Food</h1>
     <p>Restaumatica → Nadajesz + Bon</p>
+    <span class="app-version" id="app-version">v 2026.09.17 18:37</span>
   </div>
   <button onclick="showHistory()" style="margin-left:auto;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);font-weight:600;padding:4px 8px;border-radius:8px;">🕐 Historia</button>
 </div>
@@ -258,6 +260,26 @@ var orderData = null;
 var images = []; // tablica base64 screenshotów
 var imageMimes = []; // rzeczywisty typ każdego obrazu
 var btChar = null, btDevice = null;
+
+// ─── WERSJA ───────────────────────────────────────────────
+// Publiczny commit GitHuba jest źródłem wersji. W razie braku sieci zostaje data w HTML.
+function loadAppVersion() {
+  var el = document.getElementById('app-version');
+  fetch('https://api.github.com/repos/KamilekLS460/GFF_nadajesz-restaumatic_app/commits?path=bon%2Bnadajesz_multi_scr.html&per_page=1&_=' + Date.now(), {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(rows){
+      if (!rows || !rows[0]) return;
+      var stamp = rows[0].commit && rows[0].commit.committer ? rows[0].commit.committer.date : '';
+      var date = stamp ? new Date(stamp) : null;
+      var formatted = date && !isNaN(date.getTime())
+        ? new Intl.DateTimeFormat('pl-PL', {timeZone:'Europe/Warsaw', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).format(date).replace(',', '')
+        : '';
+      var sha = (rows[0].sha || '').slice(0,7);
+      if (formatted) el.textContent = 'v ' + formatted + (sha ? ' · ' + sha : '');
+    })
+    .catch(function(){});
+}
+loadAppVersion();
 
 // ─── MENU PROMPT ─────────────────────────────────────────
 var MENU_PROMPT = `Masz jeden lub więcej screenshotów tego samego zamówienia z Restaumatica dla GymFit Food. Screenshoty mogą być w dowolnej kolejności — sam ustal który zawiera dane dostawy a który dania.
